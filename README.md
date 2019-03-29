@@ -1,68 +1,80 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Redux模式
 
-## Available Scripts
+### Store和dispatch
 
-In the project directory, you can run:
+Redux本质是一个共享状态对象, 但是没有任何限制，任何人在任何时候都可以去修改数据，导致最后使用的时候获取的数据是不可预期的，
+那么Redux提出的方案是`把事情搞复杂一些，提高数据修改的门槛：模块（组件）之间可以共享数据，也可以改数据。但是我们约定，这个数据并不能直接改，你只能执行某些我允许的某些修改，而且你修改的必须大张旗鼓地告诉我。`
+这个函数就是`dispatch`, 专门用来负责数据的修改， 其中必须的参数是`type`字段，用来识别用户具体做了什么操作
 
-### `npm start`
+```js
+function reducer(action) {
+  switch (action.type) {
+    case 'UPDATE_TITLE_TEXT':
+      appState.title.text = action.text
+      break
+    case 'UPDATE_TITLE_COLOR':
+      appState.title.color = action.color
+      break
+    default:
+      break
+  }
+}
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+function createStore (state, reducer) {
+  const getState = () => state
+  const dispatch = (action) => reducer(state, action)
+  return { getState, dispatch }
+}
+```
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+### reducer需要为一个纯函数
 
-### `npm test`
+纯函数的概念来自于函数式编程
+1. 一个函数的返回结果只依赖于它的参数
+2. 执行过程里面没有副作用
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+好处
+1. 输出的结果可以预期，使reducer函数更好调试和测试。
 
-### `npm run build`
+上面的reducer是直接对appState进行了修改，那么会导致无法区分哪些字段进行了修改，哪些字段没有被修改，所以reducer需要每次执行以后返回一个新的appState，其中未修改的部分可以直接使用老数据的引用，可以防止无用的渲染，另外一个好处是一个记录新旧数据的区别，来实现时间旅行功能，
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+### 订阅
+假如我们的更新代码是
+```js
+renderTitle(store.getState())
+```
+那么当我们每次dispatch以后都需要去手动的执行上面的函数来进行页面上的同步
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+这里我们可以使用观察者模式来进行自动同步页面，修改createStore函数为
+```js
+function createStore (state, reducer) {
+  const listeners = []
+  const subscribe = (listener) => listeners.push(listener)
+  const getState = () => state
+  const dispatch = (action) => {
+    state = reducer(state, action)
+    listeners.forEach((listener) => listener())
+  }
+  return { getState, dispatch, subscribe }
+}
+```
+发现暴露出一个subscribe方法，然后我们的使用方法就变成
+```js
+// 定一个 reducer
+function reducer (state, action) {
+  /* 初始化 state 和 switch case */
+}
 
-### `npm run eject`
+// 生成 store
+const store = createStore(state, reducer)
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+// 监听数据变化重新渲染页面
+store.subscribe(() => renderTitle(store.getState()))
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+// 首次渲染页面
+renderTitle(store.getState()) 
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+// 后面可以随意 dispatch 了，页面自动更新
+store.dispatch(...)
+```
