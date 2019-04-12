@@ -78,3 +78,6 @@ renderTitle(store.getState())
 // 后面可以随意 dispatch 了，页面自动更新
 store.dispatch(...)
 ```
+
+
+### 自制react-redux
