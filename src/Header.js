@@ -5,12 +5,12 @@ class Header extends PureComponent {
   render() {
     return (
       <div style={{ color: this.props.color }}>
-        Header
+        {this.props.text}
       </div>
     )
   }
 }
 
 export default connect(
-  ({ color }) => ({ color })
+  ({ color, text }) => ({ color, text })
 )(Header);
