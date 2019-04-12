@@ -15,11 +15,9 @@ export function connect(stateFn = returnValue, actions = {}) {
           this.forceUpdate();
         });
       }
-      componentWillUnmount() {
-        this.unsubscribe(() => {
-          this.forceUpdate();
-        });
-      }
+      // componentWillUnmount() {
+      //   this.unsubscribe(this, this.handleRender);
+      // }
       render() {
         return <Context.Consumer>
           {({ getState, dispatch, subscribe, unsubscribe }) => {
