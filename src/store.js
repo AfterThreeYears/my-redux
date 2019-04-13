@@ -6,6 +6,7 @@ function createStore(state, reducer) {
     if (index !== -1) {
       listeners.splice(index, 1);
     }
+    console.log('listeners is: ', listeners);
   }
   const getState = () => state;
   const dispatch = (action) => {

@@ -9,32 +9,43 @@ function returnValue(value) {
 
 export function connect(stateFn = returnValue, actions = {}) {
   return (Component) => {
-    class A extends React.PureComponent {
+    class ConnectHOC extends React.PureComponent {
+      static contextType = Context;
+
+      state = {}
+
       componentDidMount() {
-        this.subscribe(() => {
-          this.forceUpdate();
-        });
+        const { dispatch, subscribe } = this.context;
+        subscribe(this.handleUpdate);
+        const resultActions = Object.keys(actions).reduce((result, key) => ({
+          ...result,
+          [key]: actions[key](dispatch),
+        }), {});
+        this.setState(() => ({
+          ...resultActions,
+        }));
+        this.handleUpdate();
       }
-      // componentWillUnmount() {
-      //   this.unsubscribe(this, this.handleRender);
-      // }
+
+      handleUpdate = () => {
+        const { getState } = this.context;
+        const state = stateFn(getState());
+        this.setState(() => ({
+          ...state,
+        }));
+      }
+
+      componentWillUnmount() {
+        const { unsubscribe } = this.context;
+        unsubscribe(this.handleUpdate);
+      }
+
       render() {
-        return <Context.Consumer>
-          {({ getState, dispatch, subscribe, unsubscribe }) => {
-            this.subscribe = subscribe;
-            this.unsubscribe = unsubscribe;
-            const state = stateFn(getState());
-            const resultActions = Object.keys(actions).reduce((result, key) => ({
-              ...result,
-              [key]: actions[key](dispatch),
-            }), {});
-            return <Component {...state} {...resultActions} />
-          }}
-        </Context.Consumer>
+        console.log(this.state, this.context);
+        return <Component {...this.state} />;
       }
     }
-    A.contextType = Context;
-    return A;
+    return ConnectHOC;
   }
 }
 
